@@ -1,0 +1,729 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import glob
+import os
+import re
+import time
+import argparse
+import shutil
+from datetime import datetime
+from PIL import Image
+from cmd2 import Cmd
+from pwd import getpwuid
+from grp import getgrgid
+
+class Fledge:
+    files = []          # currently selected files
+    filters = []        # where clauses on with statements
+    lines = []
+
+    # Initialize and load a file
+    def __init__(self, filename=None):
+        self.lines = []
+
+        if filename:
+            with open(filename, 'r') as f:
+                self.lines = f.readlines()
+
+    # Parse the loaded file
+    def parse(self):
+        for line in self.lines:
+            if line.strip() != '':
+                self.parse_line(line.strip())
+
+    # Parse a line
+    def parse_line(self, line):
+        # Get the keyword
+        tokens = line.split(' ')
+        keyword = tokens[0]
+        predicate = ' '.join(tokens[1:])
+
+        # Actions
+        if keyword == 'with' or keyword == 'w':
+            self.parse_with(predicate)
+
+        elif keyword == 'select' or keyword == 'sel':
+            # Add file(s) to selection
+            file_list = self.glob_path(predicate)
+
+            for f in file_list:
+                if f not in self.files:
+                    self.files.append(f)
+
+        elif keyword == 'deselect':
+            # Remove file(s) from selection
+            file_list = self.glob_path(predicate)
+            self.files = [f for f in self.files if f not in file_list]
+
+        elif keyword == 'print' or keyword == 'list' or keyword == 'l':
+            # Break up the predicate
+            attributes = [p.strip() for p in predicate.split(',')]
+
+            # Loop through everything we want
+            for f in self.files:
+                line = []
+
+                for attribute in attributes:
+                    # Print attributes
+                    if attribute == 'name' or attribute == 'filename' or attribute == '':
+                        line.append(os.path.relpath(f, os.getcwd()))
+                    elif attribute == 'fullpath':
+                        line.append(f)
+                    elif attribute == 'size':
+                        # File size
+                        size = os.path.getsize(f)
+                        line.append(str(size))
+                    elif attribute == 'width':
+                        # Image width
+                        img = Image.open(f)
+                        line.append(str(img.size[0]))
+                    elif attribute == 'height':
+                        # Image height
+                        img = Image.open(f)
+                        line.append(str(img.size[1]))
+                    elif attribute == 'imagesize':
+                        # Image width x height
+                        img = Image.open(f)
+                        line.append('%sx%s' % (img.size[0], img.size[1]))
+
+                print ' | '.join(line)
+
+        elif keyword == 'replace':
+            # replace /pattern/replacement/
+
+            # Get the pattern and replacement
+            m = re.match(r"/(.*)(?<!\\)/(.*)/$", predicate)
+            pattern, replacement = m.groups()
+
+            # Replace any escaped slashes
+            replacement = replacement.replace('\/', '/')
+
+            # For each file, load the contents, run the regex, then save the file
+            for file in self.files:
+                with open(file, 'r') as f:
+                    contents = f.read()
+                    contents = re.sub(pattern, replacement, contents)
+
+                with open(file, 'w') as f:
+                    f.write(contents)
+
+        elif keyword == 'trim':
+            # trim
+
+            # For each file, load the contents, trim it, then save the file
+            for file in self.files:
+                with open(file, 'r') as f:
+                    contents = f.read()
+                    contents = contents.strip()
+
+                with open(file, 'w') as f:
+                    f.write(contents)
+
+        elif keyword == 'prepend':
+            # prepend [text]
+
+            # For each file, load the contents, prepend the text, then save the file
+            for file in self.files:
+                with open(file, 'r') as f:
+                    contents = f.read()
+                    contents = predicate.decode('string_escape') + contents
+
+                with open(file, 'w') as f:
+                    f.write(contents)
+
+        elif keyword == 'append':
+            # append [text]
+
+            # For each file, load the contents, append the text, then save the file
+            for file in self.files:
+                with open(file, 'r') as f:
+                    contents = f.read()
+                    contents = contents + predicate.decode('string_escape')
+
+                with open(file, 'w') as f:
+                    f.write(contents)
+
+        elif keyword == 'split':
+            # split on /regex/ to filenames
+
+            # Parse the predicate
+            # TODO: make this elegant
+            m = re.match("on /(.+?)(?!<\\\)/ to ((.+)( starting with (\d+))|(.+))", predicate) 
+            pattern = m.groups()[0]
+            if m.groups()[4] != None:
+                # We have a "starting with" clause
+                filename_template = m.groups()[2]
+                start_with = m.groups()[4]
+            else:
+                # We don't
+                filename_template = m.groups()[1]
+                start_with = None
+
+            # Where to start with the numbering
+            if start_with is not None:
+                counter = int(start_with)
+            else:
+                counter = 1
+
+            # Parse filename into counter template
+            template = "%0" + str(filename_template.count('%')) + "d"
+
+            # Start with a new selection
+            new_files = []
+
+            # For each file, load the contents, append the text, then save the file
+            for file in self.files:
+                # Read contents
+                with open(file, 'r') as f:
+                    contents = f.read()
+
+                # Add null byte character before each split, based on regex
+                # This way we can split on the null byte and keep the pattern text
+                contents = re.sub("(" + pattern + ")", r"\x00\1", contents)
+
+                # Split on regex
+                split_contents = contents.split("\\x00")
+
+                # Only split if there's actually something split
+                if len(split_contents) > 1:
+                    # For each part
+                    for bit in split_contents:
+                        # Update output filename
+                        output = re.sub(r"%+", template, filename_template) % counter
+
+                        # Update counter
+                        counter += 1
+
+                        # Write out to a file
+                        with open(output, 'w') as f:
+                            f.write(bit)
+
+                        # Add new file to selection
+                        new_files.append(output)
+
+            self.files = new_files
+
+        elif keyword == 'rename' or keyword == 'ren':
+            # rename .jpg
+            # rename file-####.jpg
+            # rename file-####.jpg starting with 5
+
+            # First parse the predicate
+            # TODO: allow spaces in filename
+            pred = predicate.split(' ')
+            target = pred[0]
+            if len(pred) == 4:
+                # starting with X
+                start_with = int(pred[3])
+            else:
+                start_with = 1
+
+            counter = start_with
+
+            # Parse target into counter template
+            if target.count('%') > 0:
+                template = "%0" + str(target.count('%')) + "d"
+            else:
+                template = ''
+
+            new_files = []
+
+            for file in self.files:
+                # If we just have an extension (starts with period), rename
+                if target[0] == '.':
+                    # TODO: What about dotfiles?
+                    new_filename = os.path.splitext(os.path.basename(file))[0] + target
+                else:
+                    # Otherwise rename to new filename pattern
+                    new_filename = re.sub(r"%+", template, target) % counter
+                    counter += 1
+
+                # Do the rename
+                dest = os.path.split(file)[0] + '/' + new_filename
+                os.rename(file, dest)
+
+                # Push the new filename to the new list
+                new_files.append(dest)
+
+            self.files = new_files
+
+        elif keyword == 'copy' or keyword == 'cp' or keyword == 'move' or keyword == 'mv':
+            # copy to [path]
+            # move to [path]
+
+            # Get "to" out of predicate
+            pred = predicate.split(' ')
+            target = pred[1]
+            target_dir = os.path.expanduser(target)
+
+            new_files = []
+
+            for file in self.files:
+                if keyword == 'copy' or keyword == 'cp':
+                    # Copy the file
+                    shutil.copy(file, target_dir)
+                elif keyword == 'move' or keyword == 'mv':
+                    # Move the file
+                    shutil.copy2(file, target_dir)
+                    os.remove(file)
+
+                # New filename
+                new_filename = os.path.abspath(target_dir) + '/' + os.path.basename(file)
+
+                # Push the new filename to the new list
+                new_files.append(new_filename)
+
+            self.files = new_files
+
+        elif keyword == 'resize':
+            # resize 640x480
+            # resize 1000w
+            # resize 500h
+
+            w = 0
+            h = 0
+
+            # Parse the size into width/height
+            if 'x' in predicate:
+                w = int(predicate.split('x')[0])
+                h = int(predicate.split('x')[1])
+            else:
+                if predicate[-1] == 'h':
+                    h = int(predicate[:-1])
+                else:
+                    if predicate[-1] == 'w':
+                        # If it ends with 'w'
+                        w = int(predicate[:-1])
+                    else:
+                        # If it's just a number, it's a width
+                        w = int(predicate)
+
+            for file in self.files:
+                # Open the image
+                img = Image.open(file)
+
+                file_w, file_h = img.size
+
+                if w == 0:
+                    # Proportional to height
+                    width = int(round((float(h) / file_h) * file_w))
+                else:
+                    width = w
+
+                if h == 0:
+                    # Proportional to width
+                    height = int(round((float(w) / file_w) * file_h))
+                else:
+                    height = h
+
+                # Resize it
+                img = img.resize((width, height), Image.ANTIALIAS)
+
+                # Save it
+                img.save(file, quality=95)
+
+        elif keyword == 'rotate' or keyword == 'rot':
+            # rotate 90
+            # rotate -45
+
+            for file in self.files:
+                # Open the image
+                img = Image.open(file)
+
+                # Rotate it
+                img = img.rotate(float(predicate))
+
+                # Save it
+                img.save(file, quality=95)
+
+        elif keyword == 'flip':
+            # flip h
+            # flip v
+
+            if predicate == 'h':
+                method = Image.FLIP_LEFT_RIGHT
+            elif predicate == 'v':
+                method = Image.FLIP_TOP_BOTTOM
+
+            for file in self.files:
+                # Open the image
+                img = Image.open(file)
+
+                # Flip it
+                img = img.transpose(method)
+
+                # Save it
+                img.save(file, quality=95)
+
+        elif keyword == 'convert':
+            # convert to png
+            # convert to jpg
+
+            pred = predicate.split(' ')
+            format = pred[1].lower()
+
+            new_files = []
+
+            for file in self.files:
+                # Open the image
+                img = Image.open(file)
+
+                # New filename
+                new_filename = os.path.splitext(file)[0] + '.' + format
+
+                # Save it to the new filename
+                img.save(new_filename, quality=95)
+
+                # Push the new filename to the new list
+                new_files.append(new_filename)
+
+            self.files = new_files
+
+
+    # Parse 'with' statement
+    def parse_with(self, line):
+        if ' where ' in line:
+            # Get the path and filters
+            path, self.filters = line.split(' where ')
+
+            # Allow for multiple filters
+            self.filters = self.filters.split(' and ')
+        else:
+            path = line
+            self.filters = []
+
+        # Glob the files
+        self.files = self.glob_path(path)
+
+        # Apply any filters
+        self.apply_filters()
+
+
+    # Apply filters to a list of files
+    def apply_filters(self):
+        for filter_string in self.filters:
+            # Parse the filter
+            m = re.match(r"(.+?)\s*([><=!]+|matches)\s*(.+)", filter_string)
+            keyword, operator, value = m.groups()
+
+            # Function to handle the operator (<, >=, etc.)
+            # TODO: some way to do this via metaprogramming?
+            def apply_operator(operator, a, b):
+                if operator == '<':
+                    return a < b
+                elif operator == '<=':
+                    return a <= b
+                elif operator == '>':
+                    return a > b
+                elif operator == '>=':
+                    return a >= b
+                elif operator == '==':
+                    return a == b
+                elif operator == '!=':
+                    return a != b
+                elif operator == 'matches':
+                    return re.search(b, a)
+
+            # Function to do the comparison
+            def check_value(filename, keyword, operator, value):
+                attribute = ''
+
+                if keyword == 'size':
+                    # File size
+                    attribute = os.path.getsize(filename)
+
+                    # Convert value to int so we can compare it
+                    # TODO: allow things like 40K or 50M
+                    value = int(value)
+
+                elif keyword == 'lastmod':
+                    # Last modified date
+                    attribute = os.path.getmtime(filename)
+
+                    # For dates, convert value to seconds as well
+                    value = self.make_unix_date(value)
+
+                elif keyword == 'width':
+                    # Image width
+                    img = Image.open(filename)
+                    attribute = img.size[0]
+
+                    # Convert value to integer
+                    value = int(value)
+
+                elif keyword == 'height':
+                    # Image height
+                    img = Image.open(filename)
+                    attribute = img.size[1]
+
+                    # Convert value to integer
+                    value = int(value)
+
+                elif keyword == 'wordcount':
+                    # Word count (for text)
+                    import subprocess
+                    word_count_output = subprocess.check_output(['wc', filename])
+                    attribute = int(re.sub(' +', ' ', word_count_output).strip().split(' ')[1])
+
+                    # Convert value to integer
+                    value = int(value)
+
+                elif keyword == 'content':
+                    # Content matches regex
+                    f = open(filename, 'r')
+                    attribute = f.read()
+
+                    # Strip slashes off regex
+                    value = value[1:-1]
+
+                elif keyword == 'owner':
+                    # Owner
+                    attribute = getpwuid(os.stat(filename).st_uid).pw_name
+
+                    # Strip slashes off regex if used
+                    if value[0] == '/' and value[-1] == '/':
+                        value = value[1:-1]
+
+                elif keyword == 'group':
+                    # Owner
+                    attribute = getgrgid(os.stat(filename).st_gid).gr_name
+
+                    # Strip slashes off regex if used
+                    if value[0] == '/' and value[-1] == '/':
+                        value = value[1:-1]
+
+                return apply_operator(operator, attribute, value)
+
+            # Use the built-in filter() function to, ahem, filter the list
+            self.files = filter(lambda file: check_value(file, keyword, operator, value), self.files)
+
+    # Globs a path and returns list of files therein
+    def glob_path(self, path):
+        files = []
+
+        # Expand tilde if present
+        path = os.path.expanduser(path)
+
+        # Check for **/ in the path (indicates recursive from that point on)
+        if '**/' in path:
+            parts = path.split('**/')
+            base = parts[0] or '.'
+            pattern = parts[1]
+
+            for root, dirs, file_list in os.walk(base):
+                for file in file_list:
+                    if glob.fnmatch.fnmatch(file, pattern):
+                        files.append(os.path.join(root, file))
+        else:
+            # Check if the path is a directory, and if so, get all the files in it
+            if os.path.isdir(path):
+                files = glob.glob('%s/*' % path)
+            else:
+                files = glob.glob(path)
+
+        abs_files = [os.path.abspath(f) for f in files]
+
+        return abs_files
+
+    # Converts a date string like "2013-09-11" or "2013-09-11 04:23" to Unix time
+    def make_unix_date(self, date_string):
+        # First, try with time
+        try:
+            date_obj = datetime.strptime(date_string, '%Y-%m-%d %H:%M')
+        except ValueError:
+            # Now try with just the date 
+            try:
+                date_obj = datetime.strptime(date_string, '%Y-%m-%d')
+            except ValueError:
+                return -1 
+
+        if date_obj:
+            return float(date_obj.strftime('%s'))
+
+
+class FledgeShell(Cmd):
+    fledge = None
+    prompt = 'fledge> '
+
+    Cmd.shortcuts.update({'q': 'quit'})
+    editor = 'vim'
+
+    def default(self, arg):
+        # Get the keyword
+        keyword = arg.split(' ')[0]
+
+        if keyword in [
+            'with', 'w', 'select', 'sel', 'deselect',
+            'print', 'list', 'l',
+            'replace', 'split', 'trim', 'append', 'prepend',
+            'rename', 'ren', 'copy', 'cp', 'move', 'mv',
+            'resize', 'rotate', 'rot', 'flip',
+            'convert'
+        ]:
+            self.fledge.parse_line(arg)
+        else:
+            print 'Huh?'
+
+    # Print 
+    def do_help(self, arg):
+        if arg == '':
+            print ""
+            print "  Fledge commands:"
+            print "    Selection: with, select, deselect"
+            print "    General: print, list, convert"
+            print "    Files: copy, move, rename"
+            print "    Text: replace, split, append, prepend, trim"
+            print "    Images: resize, rotate, flip"
+            print ""
+            print "  Shell-specific commands:"
+            print "    edit, help, history, list, load, save, shell, quit"
+            print ""
+
+        elif arg == 'with':
+            print ""
+            print "  Starts a new selection."
+            print ""
+            print "    with *.jpg"
+            print "    with *.text where size > 10000"
+            print "    with *.jpg where width < 500 and height < 500"
+            print "    with *.text where content matches /myregex/"
+            print ""
+
+        elif arg == 'select':
+            print ""
+            print "  Adds specified files to the current selection."
+            print ""
+            print "    select *.gif"
+            print "    select file01.png"
+            print ""
+
+        elif arg == 'deselect':
+            print ""
+            print "  Removes specified files from the current selection."
+            print ""
+            print "    deselect *.pcx"
+            print "    deselect file02.png"
+            print ""
+
+        elif arg == 'print':
+            print ""
+            print "  Prints out information for each file in the current selection."
+            print ""
+            print "    print name"
+            print "    print name, size, width, height"
+            print "    print fullpath"
+            print ""
+
+        elif arg == 'replace':
+            print ""
+            print "  Replaces text using a regex."
+            print ""
+            print "    replace /foo/bar/"
+            print "    replace /Chapter (\d+)/CHAPTER \\1.0/"
+            print ""
+
+        elif arg == 'split':
+            print ""
+            print "  Splits selected file on a regex."
+            print ""
+            print "    split on /Chapter \d+/ to chapter-%%.text"
+            print "    split on /PART [IVXLCM]+/ to part-%%%.text starting with 5"
+            print ""
+
+        elif arg == 'append':
+            print ""
+            print "  Appends the text to the selected files."
+            print ""
+            print "    append ---"
+            print "    append \\n\\nMy footer"
+            print ""
+
+        elif arg == 'prepend':
+            print ""
+            print "  Prepends the text to the selected files."
+            print ""
+            print "    prepend ## Header"
+            print "    prepend title: Foobar\\n\\nauthor: Me"
+            print ""
+
+        elif arg == 'rename':
+            print ""
+            print "  Renames the selected files."
+            print ""
+            print "    rename .jpg"
+            print "    rename part-%%%.text starting with 5"
+            print ""
+
+        elif arg == 'copy':
+            print ""
+            print "  Copies the selected files."
+            print ""
+            print "    copy to ~"
+            print "    copy to /usr/share/foobar"
+            print ""
+
+        elif arg == 'move':
+            print ""
+            print "  Moves the selected files."
+            print ""
+            print "    move to ~"
+            print "    move to /usr/local/bin"
+            print ""
+
+        elif arg == 'resize':
+            print ""
+            print "  Resizes the selected image files."
+            print ""
+            print "    resize 640x480"
+            print "    resize 1000w"
+            print "    resize 1000"
+            print "    resize 75h"
+            print ""
+
+        elif arg == 'rotate':
+            print ""
+            print "  Rotates the selected image files."
+            print ""
+            print "    rotate 90"
+            print "    rotate -45"
+            print ""
+
+        elif arg == 'flip':
+            print ""
+            print "  Flips the selected image files."
+            print ""
+            print "    flip h"
+            print "    flip v"
+            print ""
+
+        elif arg == 'convert':
+            print ""
+            print "  Converts the selected image files to the specified format."
+            print ""
+            print "    convert to jpg"
+            print "    convert to png"
+            print ""
+
+    # Quitting
+    def do_quit(self, arg):
+        return True
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", nargs="?", help="script file")
+    parser.add_argument("-v", "--verbose", help="verbose mode", action="store_true")
+    parser.add_argument("-n", "--dry-run", help="dry run (don't actually execute)", action="store_true")
+    args = parser.parse_args()
+
+    if args.file:
+        if os.path.exists(args.file):
+            fledge = Fledge(args.file)
+            fledge.parse()
+        else:
+            print "File doesn't exist"
+    else:
+        fshell = FledgeShell()
+        fshell.fledge = Fledge()
+        fshell.cmdloop()
