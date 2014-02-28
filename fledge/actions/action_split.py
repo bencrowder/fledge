@@ -64,10 +64,13 @@ def action_split(controller, parameters):
                 # Update output filename
                 output = re.sub(r"%+", template, filename_template) % counter
 
+                # Expand the output file path
+                output = controller.expand_path(output)
+
                 # Update counter
                 counter += 1
 
-                # Write out to a file
+                # Write output to a file
                 with open(output, 'w') as f:
                     f.write(bit)
 

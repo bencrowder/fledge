@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import shutil
+import os
+
 # move
 def action_move(controller, parameters):
     """
@@ -15,7 +18,9 @@ def action_move(controller, parameters):
     # Get "to" out of predicate
     pred = parameters.split(' ')
     target = pred[1]
-    target_dir = os.path.expanduser(target)
+
+    # Expand path (aliases, home dir)
+    target_dir = controller.expand_path(target)
 
     new_files = []
 

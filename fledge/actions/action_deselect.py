@@ -11,5 +11,5 @@ Removes specified files from the current selection.
     """
 
     # Remove file(s) from selection
-    file_list = self.glob_path(parameters)
+    file_list = controller.glob_path(controller.expand_path(parameters))
     controller.files = [f for f in controller.files if f not in file_list]

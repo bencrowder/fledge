@@ -22,6 +22,9 @@ def action_with(controller, parameters):
         path = parameters
         controller.filters = []
 
+    # Expand the path if there are aliases
+    path = controller.expand_path(path)
+
     # Glob the files
     controller.files = controller.glob_path(path)
 

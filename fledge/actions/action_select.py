@@ -11,8 +11,8 @@ def action_select(controller, parameters):
     """
 
     # Add file(s) to selection
-    file_list = self.glob_path(parameters)
+    file_list = controller.glob_path(controller.expand_path(parameters))
 
     for f in file_list:
-        if f not in self.files:
+        if f not in controller.files:
             controller.files.append(f)

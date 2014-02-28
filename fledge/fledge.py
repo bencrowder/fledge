@@ -5,11 +5,8 @@ import glob
 import os
 import re
 import time
-import argparse
-import shutil
 from datetime import datetime
 from PIL import Image
-from cmd2 import Cmd
 from pwd import getpwuid
 from grp import getgrgid
 
@@ -218,3 +215,23 @@ class Fledge:
 
         if date_obj:
             return float(date_obj.strftime('%s'))
+
+    # Expands any path aliases in a path
+    def expand_path(self, path):
+        # First, see if anything matches the {alias} pattern
+        if re.match(r"({.*?})", path):
+            # Alias lookup function
+            def replacement(matchobj):
+                alias = matchobj.group(1)
+                if alias in self.aliases['actions']:
+                    return self.aliases['actions'][alias]
+                else:
+                    return matchobj.group(0)
+
+            # Make the substitution
+            path = re.sub(r'({.*?})', replacement, path)
+
+        # And expanduser in case they used a tilde
+        path = os.path.expanduser(path)
+
+        return path
