@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import fledge
+import os
 import argparse
 from cmd2 import Cmd
 
+from fledge import fledge
+
 class FledgeShell(Cmd):
-    fledge = None
+    controller = None
     prompt = 'fledge> '
 
     Cmd.shortcuts.update({'q': 'quit'})
@@ -24,7 +26,7 @@ class FledgeShell(Cmd):
             'resize', 'rotate', 'rot', 'flip',
             'convert'
         ]:
-            self.fledge.parse_line(arg)
+            self.controller.parse_line(arg)
         else:
             print 'Huh?'
 
@@ -45,9 +47,6 @@ class FledgeShell(Cmd):
 
         else:
             # Try importing the action
-            print fledge.actions
-
-            # Import the action method
             name = 'action_%s' % arg
 
             try:
@@ -57,7 +56,7 @@ class FledgeShell(Cmd):
                 print "Error importing that action"
 
             if action and callable(action):
-                action(self, predicate)
+                print action.__doc__
 
     # Quitting
     def do_quit(self, arg):
@@ -73,11 +72,11 @@ if __name__ == '__main__':
 
     if args.file:
         if os.path.exists(args.file):
-            fledge = Fledge(args.file)
-            fledge.parse()
+            fl = fledge.Fledge(args.file)
+            fl.parse()
         else:
             print "File doesn't exist"
     else:
         fshell = FledgeShell()
-        fshell.fledge = Fledge()
+        fshell.controller = fledge.Fledge()
         fshell.cmdloop()

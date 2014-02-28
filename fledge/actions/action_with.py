@@ -12,14 +12,14 @@ def action_with(controller, parameters):
     with *.text where content matches /myregex/
     """
 
-    if ' where ' in line:
+    if ' where ' in parameters:
         # Get the path and filters
-        path, controller.filters = line.split(' where ')
+        path, controller.filters = parameters.split(' where ')
 
         # Allow for multiple filters
         controller.filters = controller.filters.split(' and ')
     else:
-        path = line
+        path = parameters
         controller.filters = []
 
     # Glob the files

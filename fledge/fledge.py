@@ -49,7 +49,7 @@ class Fledge:
         name = 'action_%s' % keyword
 
         try:
-            actions = __import__("actions.%s" % name, fromlist=[name])
+            actions = __import__("fledge.actions.%s" % name, fromlist=[name])
             action = getattr(actions, name)
         except ImportError:
             print "Error importing that action"
