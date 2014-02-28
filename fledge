@@ -27,6 +27,35 @@ class ActionManager:
 
         controller.parse_with(parameters)
 
+    # select
+    def action_select(self, controller, parameters):
+        """
+  Adds specified files to the current selection.
+
+    select *.gif
+    select file01.png
+        """
+
+        # Add file(s) to selection
+        file_list = self.glob_path(parameters)
+
+        for f in file_list:
+            if f not in self.files:
+                controller.files.append(f)
+
+    # deselect
+    def action_deselect(self, controller, parameters):
+        """
+  Removes specified files from the current selection.
+
+    deselect *.pcx
+    deselect file02.png
+        """
+
+        # Remove file(s) from selection
+        file_list = self.glob_path(parameters)
+        controller.files = [f for f in controller.files if f not in file_list]
+
     # prepend
     def action_prepend(self, controller, parameters):
         """
@@ -108,10 +137,10 @@ class ActionManager:
     # split
     def action_split(self, controller, parameters):
         """
-  Splits selected file on a regex."
+  Splits selected file on a regex.
 
-    split on /Chapter \d+/ to chapter-%%.text"
-    split on /PART [IVXLCM]+/ to part-%%%.text starting with 5"
+    split on /Chapter \d+/ to chapter-%%.text
+    split on /PART [IVXLCM]+/ to part-%%%.text starting with 5
         """
 
         # For each file, load the contents, trim it, then save the file
@@ -180,6 +209,118 @@ class ActionManager:
 
         controller.files = new_files
 
+    # rename
+    def action_rename(self, controller, parameters):
+        """
+  Renames the selected files.
+
+    rename .jpg
+    rename part-%%%.text starting with 5
+        """
+
+        # rename .jpg
+        # rename file-####.jpg
+        # rename file-####.jpg starting with 5
+
+        # First parse the predicate
+        # TODO: allow spaces in filename
+        pred = parameters.split(' ')
+        target = pred[0]
+        if len(pred) == 4:
+            # starting with X
+            start_with = int(pred[3])
+        else:
+            start_with = 1
+
+        counter = start_with
+
+        # Parse target into counter template
+        if target.count('%') > 0:
+            template = "%0" + str(target.count('%')) + "d"
+        else:
+            template = ''
+
+        new_files = []
+
+        for file in controller.files:
+            # If we just have an extension (starts with period), rename
+            if target[0] == '.':
+                # TODO: What about dotfiles?
+                new_filename = os.path.splitext(os.path.basename(file))[0] + target
+            else:
+                # Otherwise rename to new filename pattern
+                new_filename = re.sub(r"%+", template, target) % counter
+                counter += 1
+
+            # Do the rename
+            dest = os.path.split(file)[0] + '/' + new_filename
+            os.rename(file, dest)
+
+            # Push the new filename to the new list
+            new_files.append(dest)
+
+        controller.files = new_files
+
+    # copy
+    def action_copy(self, controller, parameters):
+        """
+  Copies the selected files.
+
+    copy to ~
+    copy to /usr/share/foobar
+        """
+
+        # copy to [path]
+
+        # Get "to" out of predicate
+        pred = parameters.split(' ')
+        target = pred[1]
+        target_dir = os.path.expanduser(target)
+
+        new_files = []
+
+        for file in controller.files:
+            # Copy the file
+            shutil.copy(file, target_dir)
+
+            # New filename
+            new_filename = os.path.abspath(target_dir) + '/' + os.path.basename(file)
+
+            # Push the new filename to the new list
+            new_files.append(new_filename)
+
+        controller.files = new_files
+
+    # move
+    def action_move(self, controller, parameters):
+        """
+  Moves the selected files.
+
+    move to ~
+    move to /usr/share/foobar
+        """
+
+        # move to [path]
+
+        # Get "to" out of predicate
+        pred = parameters.split(' ')
+        target = pred[1]
+        target_dir = os.path.expanduser(target)
+
+        new_files = []
+
+        for file in controller.files:
+            # Move the file
+            shutil.copy2(file, target_dir)
+            os.remove(file)
+
+            # New filename
+            new_filename = os.path.abspath(target_dir) + '/' + os.path.basename(file)
+
+            # Push the new filename to the new list
+            new_files.append(new_filename)
+
+        controller.files = new_files
 
 
 class Fledge:
@@ -217,20 +358,7 @@ class Fledge:
         action_manager = ActionManager()
 
         # Actions
-        if keyword == 'select' or keyword == 'sel':
-            # Add file(s) to selection
-            file_list = self.glob_path(predicate)
-
-            for f in file_list:
-                if f not in self.files:
-                    self.files.append(f)
-
-        elif keyword == 'deselect':
-            # Remove file(s) from selection
-            file_list = self.glob_path(predicate)
-            self.files = [f for f in self.files if f not in file_list]
-
-        elif keyword == 'print' or keyword == 'list' or keyword == 'l':
+        if keyword == 'print' or keyword == 'list' or keyword == 'l':
             # Break up the predicate
             attributes = [p.strip() for p in predicate.split(',')]
 
@@ -263,7 +391,7 @@ class Fledge:
 
                 print ' | '.join(line)
 
-        elif keyword in ['with', 'replace', 'trim', 'prepend', 'append']:
+        elif keyword in ['with', 'replace', 'trim', 'prepend', 'append', 'split', 'rename', 'copy', 'move', 'select', 'deselect']:
             method = getattr(action_manager, 'action_%s' % keyword)
             method(self, predicate)
 
@@ -271,78 +399,6 @@ class Fledge:
             # method = getattr(action_manager, keyword, None)
             # if method and callable(method):
             #     method(self, predicate)
-
-        elif keyword == 'rename' or keyword == 'ren':
-            # rename .jpg
-            # rename file-####.jpg
-            # rename file-####.jpg starting with 5
-
-            # First parse the predicate
-            # TODO: allow spaces in filename
-            pred = predicate.split(' ')
-            target = pred[0]
-            if len(pred) == 4:
-                # starting with X
-                start_with = int(pred[3])
-            else:
-                start_with = 1
-
-            counter = start_with
-
-            # Parse target into counter template
-            if target.count('%') > 0:
-                template = "%0" + str(target.count('%')) + "d"
-            else:
-                template = ''
-
-            new_files = []
-
-            for file in self.files:
-                # If we just have an extension (starts with period), rename
-                if target[0] == '.':
-                    # TODO: What about dotfiles?
-                    new_filename = os.path.splitext(os.path.basename(file))[0] + target
-                else:
-                    # Otherwise rename to new filename pattern
-                    new_filename = re.sub(r"%+", template, target) % counter
-                    counter += 1
-
-                # Do the rename
-                dest = os.path.split(file)[0] + '/' + new_filename
-                os.rename(file, dest)
-
-                # Push the new filename to the new list
-                new_files.append(dest)
-
-            self.files = new_files
-
-        elif keyword == 'copy' or keyword == 'cp' or keyword == 'move' or keyword == 'mv':
-            # copy to [path]
-            # move to [path]
-
-            # Get "to" out of predicate
-            pred = predicate.split(' ')
-            target = pred[1]
-            target_dir = os.path.expanduser(target)
-
-            new_files = []
-
-            for file in self.files:
-                if keyword == 'copy' or keyword == 'cp':
-                    # Copy the file
-                    shutil.copy(file, target_dir)
-                elif keyword == 'move' or keyword == 'mv':
-                    # Move the file
-                    shutil.copy2(file, target_dir)
-                    os.remove(file)
-
-                # New filename
-                new_filename = os.path.abspath(target_dir) + '/' + os.path.basename(file)
-
-                # Push the new filename to the new list
-                new_files.append(new_filename)
-
-            self.files = new_files
 
         elif keyword == 'resize':
             # resize 640x480
@@ -651,23 +707,12 @@ class FledgeShell(Cmd):
             print ""
 
         elif arg == 'with':
-            print action_manager.with.__doc__
+            print action_manager.action_with.__doc__
 
         elif arg == 'select':
-            print ""
-            print "  Adds specified files to the current selection."
-            print ""
-            print "    select *.gif"
-            print "    select file01.png"
-            print ""
+            print action_manager.action_select.__doc__
 
         elif arg == 'deselect':
-            print ""
-            print "  Removes specified files from the current selection."
-            print ""
-            print "    deselect *.pcx"
-            print "    deselect file02.png"
-            print ""
 
         elif arg == 'print':
             print ""
@@ -679,43 +724,28 @@ class FledgeShell(Cmd):
             print ""
 
         elif arg == 'replace':
-            print action_manager.replace.__doc__
+            print action_manager.action_replace.__doc__
 
         elif arg == 'split':
-            print action_manager.split.__doc__
+            print action_manager.action_split.__doc__
 
         elif arg == 'append':
-            print action_manager.append.__doc__
+            print action_manager.action_append.__doc__
 
         elif arg == 'prepend':
-            print action_manager.prepend.__doc__
+            print action_manager.action_prepend.__doc__
 
         elif arg == 'trim':
-            print action_manager.trim.__doc__
+            print action_manager.action_trim.__doc__
 
         elif arg == 'rename':
-            print ""
-            print "  Renames the selected files."
-            print ""
-            print "    rename .jpg"
-            print "    rename part-%%%.text starting with 5"
-            print ""
+            print action_manager.action_rename.__doc__
 
         elif arg == 'copy':
-            print ""
-            print "  Copies the selected files."
-            print ""
-            print "    copy to ~"
-            print "    copy to /usr/share/foobar"
-            print ""
+            print action_manager.action_copy.__doc__
 
         elif arg == 'move':
-            print ""
-            print "  Moves the selected files."
-            print ""
-            print "    move to ~"
-            print "    move to /usr/local/bin"
-            print ""
+            print action_manager.action_move.__doc__
 
         elif arg == 'resize':
             print ""
