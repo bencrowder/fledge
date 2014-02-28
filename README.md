@@ -24,16 +24,19 @@ And so on. Select files, then run one or more actions on that selection.
 
 ### Installation
 
-1. Download the script and put it somewhere in your PATH (or add its location to your PATH).
-2. Install libjpeg if you don't already have it installed:
+1. Download the package.
+2. `sudo python setup.py install`
+3. Copy the `fl` script somewhere in your PATH (or add its location to your PATH).
+4. `sudo pip install cmd2`
+5. Install libjpeg if you don't already have it installed:
 	1. `curl -O http://www.ijg.org/files/jpegsrc.v8c.tar.gz`
 	2. `tar -xvzf jpegsrc.v8c.tar.gz`
 	3. `cd jpeg-8c`
 	4. `./configure`
 	5. `make`
 	6. `sudo make install`
-3. OS X: Install [XQuartz](http://xquartz.macosforge.org/landing/).
-4. Install [PIL](http://www.pythonware.com/products/pil/).
+6. OS X: Install [XQuartz](http://xquartz.macosforge.org/landing/) (for PIL).
+7. Install [PIL](http://www.pythonware.com/products/pil/).
 	1. Download the [source kit](http://effbot.org/downloads/Imaging-1.1.7.tar.gz)
 	2. `tar -xvzf Imaging-1.1.7.tar.gz`
 	3. `cd Imaging-1.1.7`
@@ -42,7 +45,6 @@ And so on. Select files, then run one or more actions on that selection.
 		2. `add_directory(include_dirs, "/opt/X11/include")`
 	5. `python setup.py build`
 	6. `sudo python setup.py install`
-5. `sudo pip install cmd2`
 
 
 ### Usage
