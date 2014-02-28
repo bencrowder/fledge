@@ -62,6 +62,10 @@ class Fledge:
         keyword = tokens[0]
         predicate = ' '.join(tokens[1:])
 
+        # Check to see if keyword is an alias
+        if keyword in self.aliases['actions']:
+            keyword = self.aliases['actions'][keyword]
+
         # Import the action method
         name = 'action_%s' % keyword
 
