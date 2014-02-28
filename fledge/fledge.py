@@ -63,17 +63,35 @@ class Fledge:
         if keyword in self.aliases['actions']:
             keyword = self.aliases['actions'][keyword]
 
-        # Import the action method
-        name = 'action_%s' % keyword
-
-        try:
-            actions = __import__("fledge.actions.%s" % name, fromlist=[name])
-            action = getattr(actions, name)
-        except ImportError:
-            print "Error importing that action"
+        # Load the action
+        action = self.load_action(keyword)
 
         if action and callable(action):
             action(self, predicate)
+
+    # Load an action
+    def load_action(self, action_name):
+        action = None
+
+        # The function name we want to import
+        name = 'action_%s' % action_name
+
+        # First try to import from the user's ~/.fledge/actions directory, if it exists
+        try:
+            import sys
+            sys.path.insert(0, os.path.expanduser('~/.fledge'))
+
+            actions = __import__("actions.%s" % name, fromlist=[name])
+            action = getattr(actions, name)
+        except ImportError:
+            # It doesn't exist there, so try the system fledge package instead
+            try:
+                actions = __import__("fledge.actions.%s" % name, fromlist=[name])
+                action = getattr(actions, name)
+            except ImportError:
+                print "I don't know about that action."
+
+        return action
 
     # Apply filters to a list of files
     def apply_filters(self):

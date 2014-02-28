@@ -15,9 +15,6 @@ class FledgeShell(Cmd):
     editor = 'vim'
 
     def default(self, arg):
-        # Get the keyword
-        keyword = arg.split(' ')[0]
-
         self.controller.parse_line(arg)
 
     # Print 
@@ -36,14 +33,8 @@ class FledgeShell(Cmd):
             print ""
 
         else:
-            # Try importing the action
-            name = 'action_%s' % arg
-
-            try:
-                actions = __import__("fledge.actions.%s" % name, fromlist=[name])
-                action = getattr(actions, name)
-            except ImportError:
-                print "Error importing that action"
+            # Load the action
+            action = self.controller.load_action(arg)
 
             if action and callable(action):
                 print action.__doc__
