@@ -18,6 +18,11 @@ class Fledge:
     filters = []        # where clauses on with statements
     lines = []
 
+    aliases = {
+        'actions': {},  # mv for move, etc.
+        'paths': {},    # path shortcuts
+    }
+
     # Initialize and load a file
     def __init__(self, filename=None):
         self.lines = []

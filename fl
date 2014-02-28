@@ -18,17 +18,7 @@ class FledgeShell(Cmd):
         # Get the keyword
         keyword = arg.split(' ')[0]
 
-        if keyword in [
-            'with', 'w', 'select', 'sel', 'deselect',
-            'print', 'list', 'l',
-            'replace', 'split', 'trim', 'append', 'prepend',
-            'rename', 'ren', 'copy', 'cp', 'move', 'mv',
-            'resize', 'rotate', 'rot', 'flip',
-            'convert'
-        ]:
-            self.controller.parse_line(arg)
-        else:
-            print 'Huh?'
+        self.controller.parse_line(arg)
 
     # Print 
     def do_help(self, arg):
