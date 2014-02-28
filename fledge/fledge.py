@@ -65,7 +65,17 @@ class Fledge:
 
         # Check to see if keyword is an alias
         if keyword in self.aliases['actions']:
-            keyword = self.aliases['actions'][keyword]
+            # Do some parsing in case they included a predicate in the alias
+            line = self.aliases['actions'][keyword]
+            tokens = line.split(' ')
+            keyword = tokens[0]
+            if len(tokens) > 1:
+                new_predicate = ' '.join(tokens[1:])
+
+                if predicate == '':
+                    predicate = new_predicate
+                else:
+                    predicate = '%s %s' % (new_predicate, predicate)
 
         # Load the action
         action = self.load_action(keyword)
