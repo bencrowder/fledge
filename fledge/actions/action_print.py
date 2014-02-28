@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
+import datetime
 
 # print
 def action_print(controller, parameters):
@@ -42,5 +44,7 @@ def action_print(controller, parameters):
                 # Image width x height
                 img = Image.open(f)
                 line.append('%sx%s' % (img.size[0], img.size[1]))
+            elif attribute == 'lastmod' or attribute == 'date':
+                line.append(datetime.datetime.fromtimestamp(os.path.getmtime(f)).isoformat())
 
         print ' | '.join(line)
