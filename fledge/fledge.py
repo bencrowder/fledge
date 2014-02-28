@@ -22,6 +22,18 @@ class Fledge:
     def __init__(self, filename=None):
         self.lines = []
 
+        # Load ~/.fledge/fledgerc if it exists
+        fledge_config_path = '%s/.fledge' % os.path.expanduser('~') 
+        fledge_rc_path = '%s/fledgerc' % fledge_config_path
+        if os.path.exists(fledge_rc_path):
+            # Load the init file
+            with open(fledge_rc_path, 'r') as f:
+                self.lines = f.readlines()
+
+            # And parse it
+            self.parse()
+
+        # Now load the file we've requested
         if filename:
             with open(filename, 'r') as f:
                 self.lines = f.readlines()
