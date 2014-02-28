@@ -13,6 +13,175 @@ from cmd2 import Cmd
 from pwd import getpwuid
 from grp import getgrgid
 
+class ActionManager:
+    # with
+    def action_with(self, controller, parameters):
+        """
+  Starts a new selection.
+
+    with *.jpg
+    with *.text where size > 10000
+    with *.jpg where width < 500 and height < 500
+    with *.text where content matches /myregex/
+        """
+
+        controller.parse_with(parameters)
+
+    # prepend
+    def action_prepend(self, controller, parameters):
+        """
+  Prepends the text to the selected files.
+
+    prepend ## Header
+    prepend title: Foobar\\n\\nauthor: Me
+        """
+
+        # For each file, load the contents, prepend the text, then save the file
+        for file in controller.files:
+            with open(file, 'r') as f:
+                contents = f.read()
+                contents = parameters.decode('string_escape') + contents
+
+            with open(file, 'w') as f:
+                f.write(contents)
+
+    # append
+    def action_append(self, controller, parameters):
+        """
+  Appends the text to the selected files.
+
+    append ---
+    append \\n\\nMy footer
+        """
+
+        # For each file, load the contents, append the text, then save the file
+        for file in self.files:
+            with open(file, 'r') as f:
+                contents = f.read()
+                contents = contents + predicate.decode('string_escape')
+
+            with open(file, 'w') as f:
+                f.write(contents)
+
+    # replace
+    def action_replace(self, controller, parameters):
+        """
+  Replaces text using a regex.
+
+    replace /pattern/replacement/
+    replace /Chapter (\d+)/CHAPTER \\1.0/
+        """
+
+        # Get the pattern and replacement
+        m = re.match(r"/(.*)(?<!\\)/(.*)/$", parameters)
+        pattern, replacement = m.groups()
+
+        # Replace any escaped slashes
+        replacement = replacement.replace('\/', '/')
+
+        # For each file, load the contents, run the regex, then save the file
+        for file in controller.files:
+            with open(file, 'r') as f:
+                contents = f.read()
+                contents = re.sub(pattern, replacement, contents)
+
+            with open(file, 'w') as f:
+                f.write(contents)
+
+    # trim
+    def action_trim(self, controller, parameters):
+        """
+  Trims any spaces from the edges of the file.
+
+    trim
+        """
+
+        # For each file, load the contents, trim it, then save the file
+        for file in controller.files:
+            with open(file, 'r') as f:
+                contents = f.read()
+                contents = contents.strip()
+
+            with open(file, 'w') as f:
+                f.write(contents)
+
+    # split
+    def action_split(self, controller, parameters):
+        """
+  Splits selected file on a regex."
+
+    split on /Chapter \d+/ to chapter-%%.text"
+    split on /PART [IVXLCM]+/ to part-%%%.text starting with 5"
+        """
+
+        # For each file, load the contents, trim it, then save the file
+        for file in controller.files:
+            with open(file, 'r') as f:
+                contents = f.read()
+                contents = contents.strip()
+
+            with open(file, 'w') as f:
+                f.write(contents)
+
+        # Parse the predicate
+        # TODO: make this elegant
+        m = re.match("on /(.+?)(?!<\\\)/ to ((.+)( starting with (\d+))|(.+))", parameters) 
+        pattern = m.groups()[0]
+        if m.groups()[4] != None:
+            # We have a "starting with" clause
+            filename_template = m.groups()[2]
+            start_with = m.groups()[4]
+        else:
+            # We don't
+            filename_template = m.groups()[1]
+            start_with = None
+
+        # Where to start with the numbering
+        if start_with is not None:
+            counter = int(start_with)
+        else:
+            counter = 1
+
+        # Parse filename into counter template
+        template = "%0" + str(filename_template.count('%')) + "d"
+
+        # Start with a new selection
+        new_files = []
+
+        # For each file, load the contents, append the text, then save the file
+        for file in controller.files:
+            # Read contents
+            with open(file, 'r') as f:
+                contents = f.read()
+
+            # Add null byte character before each split, based on regex
+            # This way we can split on the null byte and keep the pattern text
+            contents = re.sub("(" + pattern + ")", r"\x00\1", contents)
+
+            # Split on regex
+            split_contents = contents.split("\\x00")
+
+            # Only split if there's actually something split
+            if len(split_contents) > 1:
+                # For each part
+                for bit in split_contents:
+                    # Update output filename
+                    output = re.sub(r"%+", template, filename_template) % counter
+
+                    # Update counter
+                    counter += 1
+
+                    # Write out to a file
+                    with open(output, 'w') as f:
+                        f.write(bit)
+
+                    # Add new file to selection
+                    new_files.append(output)
+
+        controller.files = new_files
+
+
+
 class Fledge:
     files = []          # currently selected files
     filters = []        # where clauses on with statements
@@ -26,8 +195,14 @@ class Fledge:
             with open(filename, 'r') as f:
                 self.lines = f.readlines()
 
-    # Parse the loaded file
-    def parse(self):
+    # Parse
+    def parse(self, filename=None):
+        # Load the file if specified
+        if filename:
+            with open(filename, 'r') as f:
+                self.lines = f.readlines()
+
+        # Parse each line
         for line in self.lines:
             if line.strip() != '':
                 self.parse_line(line.strip())
@@ -39,11 +214,10 @@ class Fledge:
         keyword = tokens[0]
         predicate = ' '.join(tokens[1:])
 
-        # Actions
-        if keyword == 'with' or keyword == 'w':
-            self.parse_with(predicate)
+        action_manager = ActionManager()
 
-        elif keyword == 'select' or keyword == 'sel':
+        # Actions
+        if keyword == 'select' or keyword == 'sel':
             # Add file(s) to selection
             file_list = self.glob_path(predicate)
 
@@ -89,120 +263,14 @@ class Fledge:
 
                 print ' | '.join(line)
 
-        elif keyword == 'replace':
-            # replace /pattern/replacement/
+        elif keyword in ['with', 'replace', 'trim', 'prepend', 'append']:
+            method = getattr(action_manager, 'action_%s' % keyword)
+            method(self, predicate)
 
-            # Get the pattern and replacement
-            m = re.match(r"/(.*)(?<!\\)/(.*)/$", predicate)
-            pattern, replacement = m.groups()
-
-            # Replace any escaped slashes
-            replacement = replacement.replace('\/', '/')
-
-            # For each file, load the contents, run the regex, then save the file
-            for file in self.files:
-                with open(file, 'r') as f:
-                    contents = f.read()
-                    contents = re.sub(pattern, replacement, contents)
-
-                with open(file, 'w') as f:
-                    f.write(contents)
-
-        elif keyword == 'trim':
-            # trim
-
-            # For each file, load the contents, trim it, then save the file
-            for file in self.files:
-                with open(file, 'r') as f:
-                    contents = f.read()
-                    contents = contents.strip()
-
-                with open(file, 'w') as f:
-                    f.write(contents)
-
-        elif keyword == 'prepend':
-            # prepend [text]
-
-            # For each file, load the contents, prepend the text, then save the file
-            for file in self.files:
-                with open(file, 'r') as f:
-                    contents = f.read()
-                    contents = predicate.decode('string_escape') + contents
-
-                with open(file, 'w') as f:
-                    f.write(contents)
-
-        elif keyword == 'append':
-            # append [text]
-
-            # For each file, load the contents, append the text, then save the file
-            for file in self.files:
-                with open(file, 'r') as f:
-                    contents = f.read()
-                    contents = contents + predicate.decode('string_escape')
-
-                with open(file, 'w') as f:
-                    f.write(contents)
-
-        elif keyword == 'split':
-            # split on /regex/ to filenames
-
-            # Parse the predicate
-            # TODO: make this elegant
-            m = re.match("on /(.+?)(?!<\\\)/ to ((.+)( starting with (\d+))|(.+))", predicate) 
-            pattern = m.groups()[0]
-            if m.groups()[4] != None:
-                # We have a "starting with" clause
-                filename_template = m.groups()[2]
-                start_with = m.groups()[4]
-            else:
-                # We don't
-                filename_template = m.groups()[1]
-                start_with = None
-
-            # Where to start with the numbering
-            if start_with is not None:
-                counter = int(start_with)
-            else:
-                counter = 1
-
-            # Parse filename into counter template
-            template = "%0" + str(filename_template.count('%')) + "d"
-
-            # Start with a new selection
-            new_files = []
-
-            # For each file, load the contents, append the text, then save the file
-            for file in self.files:
-                # Read contents
-                with open(file, 'r') as f:
-                    contents = f.read()
-
-                # Add null byte character before each split, based on regex
-                # This way we can split on the null byte and keep the pattern text
-                contents = re.sub("(" + pattern + ")", r"\x00\1", contents)
-
-                # Split on regex
-                split_contents = contents.split("\\x00")
-
-                # Only split if there's actually something split
-                if len(split_contents) > 1:
-                    # For each part
-                    for bit in split_contents:
-                        # Update output filename
-                        output = re.sub(r"%+", template, filename_template) % counter
-
-                        # Update counter
-                        counter += 1
-
-                        # Write out to a file
-                        with open(output, 'w') as f:
-                            f.write(bit)
-
-                        # Add new file to selection
-                        new_files.append(output)
-
-            self.files = new_files
+            # See if this action is registered
+            # method = getattr(action_manager, keyword, None)
+            # if method and callable(method):
+            #     method(self, predicate)
 
         elif keyword == 'rename' or keyword == 'ren':
             # rename .jpg
@@ -567,6 +635,8 @@ class FledgeShell(Cmd):
 
     # Print 
     def do_help(self, arg):
+        action_manager = ActionManager()
+
         if arg == '':
             print ""
             print "  Fledge commands:"
@@ -581,14 +651,7 @@ class FledgeShell(Cmd):
             print ""
 
         elif arg == 'with':
-            print ""
-            print "  Starts a new selection."
-            print ""
-            print "    with *.jpg"
-            print "    with *.text where size > 10000"
-            print "    with *.jpg where width < 500 and height < 500"
-            print "    with *.text where content matches /myregex/"
-            print ""
+            print action_manager.with.__doc__
 
         elif arg == 'select':
             print ""
@@ -616,36 +679,19 @@ class FledgeShell(Cmd):
             print ""
 
         elif arg == 'replace':
-            print ""
-            print "  Replaces text using a regex."
-            print ""
-            print "    replace /foo/bar/"
-            print "    replace /Chapter (\d+)/CHAPTER \\1.0/"
-            print ""
+            print action_manager.replace.__doc__
 
         elif arg == 'split':
-            print ""
-            print "  Splits selected file on a regex."
-            print ""
-            print "    split on /Chapter \d+/ to chapter-%%.text"
-            print "    split on /PART [IVXLCM]+/ to part-%%%.text starting with 5"
-            print ""
+            print action_manager.split.__doc__
 
         elif arg == 'append':
-            print ""
-            print "  Appends the text to the selected files."
-            print ""
-            print "    append ---"
-            print "    append \\n\\nMy footer"
-            print ""
+            print action_manager.append.__doc__
 
         elif arg == 'prepend':
-            print ""
-            print "  Prepends the text to the selected files."
-            print ""
-            print "    prepend ## Header"
-            print "    prepend title: Foobar\\n\\nauthor: Me"
-            print ""
+            print action_manager.prepend.__doc__
+
+        elif arg == 'trim':
+            print action_manager.trim.__doc__
 
         elif arg == 'rename':
             print ""
