@@ -23,7 +23,7 @@ class FledgeShell(Cmd):
             print ""
             print "  Fledge commands:"
             print "    Selection: with, select, deselect"
-            print "    General: print, list, convert"
+            print "    General: print, convert"
             print "    Files: copy, move, rename"
             print "    Text: replace, split, append, prepend, trim"
             print "    Images: resize, rotate, flip"
