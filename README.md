@@ -36,16 +36,16 @@ The `fl` script will get installed to `/usr/local/bin`. The installer will autom
 	4. `./configure`
 	5. `make`
 	6. `sudo make install`
-5. OS X: Install [XQuartz](http://xquartz.macosforge.org/landing/) (for PIL).
 6. Install [PIL](http://www.pythonware.com/products/pil/).
-	1. Download the [source kit](http://effbot.org/downloads/Imaging-1.1.7.tar.gz)
-	2. `tar -xvzf Imaging-1.1.7.tar.gz`
-	3. `cd Imaging-1.1.7`
-	4. OS X: Edit `setup.py` and at line 151 (after `add_directory(library_dirs, "/usr/local/lib")`) add the following two lines:
+	1. On OS X, first install [XQuartz](http://xquartz.macosforge.org/landing/).
+	2. Download the [source kit](http://effbot.org/downloads/Imaging-1.1.7.tar.gz)
+	3. `tar -xvzf Imaging-1.1.7.tar.gz`
+	4. `cd Imaging-1.1.7`
+	5. OS X: Edit `setup.py` and at line 151 (after `add_directory(library_dirs, "/usr/local/lib")`) add the following two lines:
 		1. `add_directory(library_dirs, "/opt/X11/lib")`
 		2. `add_directory(include_dirs, "/opt/X11/include")`
-	5. `python setup.py build`
-	6. `sudo python setup.py install`
+	6. `python setup.py build`
+	7. `sudo python setup.py install`
 
 
 ### Usage
