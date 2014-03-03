@@ -9,7 +9,7 @@ def action_alias(controller, parameters):
   Creates a new action or path alias.
 
     alias mv move
-    alias rot rotate
+    alias r90 rotate 90
     alias {logs} /var/log/apache2/vhosts/
     """
 

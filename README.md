@@ -1,6 +1,6 @@
 ## Fledge
 
-Fledge is a utility for processing files (mainly text and image files). A few examples will hopefully explain it better:
+Fledge is a language/shell for processing files (mainly text and image files). A few examples will hopefully explain it better:
 
 	with *.text
 	split on /==%==/ to page-%%%.text starting with 1
@@ -51,14 +51,14 @@ And so on. Select files, then run one or more actions on that selection.
 
 You can use Fledge as an interactive shell or to execute `.fledge` scripts.
 
-	$ fledge
-	fledge> with *.text
-	fledge> print name
-	fledge> help
+	$ fl
+	fl> with *.text
+	fl> print name
+	fl> help
 
 Or:
 
-	$ fledge myscript.fledge
+	$ fl myscript.fledge
 
 
 ### Help
