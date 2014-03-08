@@ -10,6 +10,8 @@ def action_replace(controller, parameters):
     replace /Chapter (\d+)/CHAPTER \\1.0/
     """
 
+    import re
+
     # Get the pattern and replacement
     m = re.match(r"/(.*)(?<!\\)/(.*)/$", parameters)
     pattern, replacement = m.groups()
