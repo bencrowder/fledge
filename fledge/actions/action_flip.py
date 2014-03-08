@@ -10,6 +10,11 @@ def action_flip(controller, parameters):
     flip v
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  flip [h or v]'
+        return
+
     from PIL import Image
 
     # flip h

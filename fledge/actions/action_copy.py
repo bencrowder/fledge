@@ -13,6 +13,11 @@ def action_copy(controller, parameters):
     copy to /usr/share/foobar
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  copy to [path]'
+        return
+
     # copy to [path]
 
     # Get "to" out of parameters 

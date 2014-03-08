@@ -10,6 +10,11 @@ def action_replace(controller, parameters):
     replace /Chapter (\d+)/CHAPTER \\1.0/
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  replace /[pattern]/[replacement/'
+        return
+
     import re
 
     # Get the pattern and replacement

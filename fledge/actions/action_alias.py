@@ -13,6 +13,12 @@ def action_alias(controller, parameters):
     alias {logs} /var/log/apache2/vhosts/
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  alias [name] [action with optional parameters]'
+        print '  alias {[name]} [path]'
+        return
+
     split_params = parameters.split(' ')
     alias = split_params[0]
     target = ' '.join(split_params[1:])

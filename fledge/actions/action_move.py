@@ -13,6 +13,11 @@ def action_move(controller, parameters):
     move to /usr/share/foobar
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  move to [path]'
+        return
+
     # move to [path]
 
     # Get "to" out of parameters

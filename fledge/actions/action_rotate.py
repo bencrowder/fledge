@@ -10,6 +10,11 @@ def action_rotate(controller, parameters):
     rotate -45
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  rotate [degrees]'
+        return
+
     from PIL import Image
 
     # rotate 90

@@ -10,6 +10,11 @@ Removes specified files from the current selection.
   deselect file02.png
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  deselect [files]'
+        return
+
     # Remove file(s) from selection
     file_list = controller.glob_path(controller.expand_path(parameters))
     controller.files = [f for f in controller.files if f not in file_list]

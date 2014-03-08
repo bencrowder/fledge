@@ -10,6 +10,11 @@ def action_append(controller, parameters):
     append \\n\\nMy footer
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  append [text]'
+        return
+
     # For each file, load the contents, append the text, then save the file
     for file in controller.files:
         with open(file, 'r') as f:

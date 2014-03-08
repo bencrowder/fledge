@@ -15,6 +15,11 @@ def action_print(controller, parameters):
     print fullpath
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  print [attributes]'
+        return
+
     from PIL import Image
 
     # Break up the parameters

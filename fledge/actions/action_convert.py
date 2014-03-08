@@ -10,6 +10,11 @@ def action_convert(controller, parameters):
     convert to png
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  convert to [format]'
+        return
+
     from PIL import Image
     import os
 

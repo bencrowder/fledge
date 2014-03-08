@@ -12,6 +12,11 @@ def action_resize(controller, parameters):
     resize 75h
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  resize [size]'
+        return
+
     from PIL import Image
 
     # resize 640x480

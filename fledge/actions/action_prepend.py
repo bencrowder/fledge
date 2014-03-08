@@ -10,6 +10,11 @@ def action_prepend(controller, parameters):
     prepend title: Foobar\\n\\nauthor: Me
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  prepend [text]'
+        return
+
     # For each file, load the contents, prepend the text, then save the file
     for file in controller.files:
         with open(file, 'r') as f:

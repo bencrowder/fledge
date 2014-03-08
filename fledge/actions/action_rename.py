@@ -10,6 +10,11 @@ def action_rename(controller, parameters):
     rename part-%%%.text starting with 5
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  rename [spec]'
+        return
+
     import re
     import os
 

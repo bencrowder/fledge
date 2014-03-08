@@ -10,6 +10,11 @@ def action_select(controller, parameters):
     select file01.png
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  select [files]'
+        return
+
     # Add file(s) to selection
     file_list = controller.glob_path(controller.expand_path(parameters))
 

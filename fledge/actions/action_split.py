@@ -10,6 +10,11 @@ def action_split(controller, parameters):
     split on /PART [IVXLCM]+/ to part-%%%.text starting with 5
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  split on /[pattern]/ to [filenamespec]'
+        return
+
     import re
 
     # For each file, load the contents, trim it, then save the file

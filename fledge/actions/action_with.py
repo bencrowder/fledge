@@ -23,6 +23,11 @@ def action_with(controller, parameters):
     group -- Unix file group (example: group matches /^users/)
     """
 
+    if parameters.strip() == '':
+        print 'Missing parameters. Usage:'
+        print '  with [files]'
+        return
+
     if ' where ' in parameters:
         # Get the path and filters
         path, controller.filters = parameters.split(' where ')
