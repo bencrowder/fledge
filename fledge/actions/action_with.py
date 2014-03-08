@@ -10,6 +10,17 @@ def action_with(controller, parameters):
     with *.text where size > 10000
     with *.jpg where width < 500 and height < 500
     with *.text where content matches /myregex/
+
+  Filters:
+ 
+    size -- file size
+    width -- image width
+    height -- image height
+    content -- file contents
+    lastmod -- last-modified date (incomplete)
+    wordcount -- word count (example: wordcount <= 5000)
+    owner -- Unix file owner (example: owner matches /www/)
+    group -- Unix file group (example: group matches /^users/)
     """
 
     if ' where ' in parameters:
