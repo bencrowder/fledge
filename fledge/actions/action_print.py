@@ -15,7 +15,9 @@ def action_print(controller, parameters):
     print fullpath
     """
 
-    # Break up the predicate
+    from PIL import Image
+
+    # Break up the parameters
     attributes = [p.strip() for p in parameters.split(',')]
 
     # Loop through everything we want

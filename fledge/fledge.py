@@ -112,7 +112,10 @@ class Fledge:
         for filter_string in self.filters:
             # Parse the filter
             m = re.match(r"(.+?)\s*([><=!]+|matches)\s*(.+)", filter_string)
-            keyword, operator, value = m.groups()
+            if m:
+                keyword, operator, value = m.groups()
+            else:
+                continue
 
             # Function to handle the operator (<, >=, etc.)
             # TODO: some way to do this via metaprogramming?

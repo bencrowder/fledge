@@ -21,14 +21,16 @@ if not os.path.exists(fledge_path):
     os.mkdir(fledge_path)
 
 # Make ~/.fledge/fledgerc
-f = open('%s/fledgerc' % fledge_path, 'w')
-f.write('')
-f.close()
+if not os.path.exists('%s/fledgerc' % fledge_path):
+    f = open('%s/fledgerc' % fledge_path, 'w')
+    f.write('')
+    f.close()
 
 # Make ~/.fledge/actions/
-os.mkdir('%s/actions' % fledge_path)
+if not os.path.exists('%s/actions' % fledge_path):
+    os.mkdir('%s/actions' % fledge_path)
 
-# Make ~/.fledge/actions/__init__.py
-f = open('%s/actions/__init__.py' % fledge_path, 'w')
-f.write('')
-f.close()
+    # Make ~/.fledge/actions/__init__.py
+    f = open('%s/actions/__init__.py' % fledge_path, 'w')
+    f.write('')
+    f.close()

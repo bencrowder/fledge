@@ -10,6 +10,8 @@ def action_rotate(controller, parameters):
     rotate -45
     """
 
+    from PIL import Image
+
     # rotate 90
     # rotate -45
 
@@ -18,7 +20,7 @@ def action_rotate(controller, parameters):
         img = Image.open(file)
 
         # Rotate it
-        img = img.rotate(float(predicate))
+        img = img.rotate(float(parameters))
 
         # Save it
         img.save(file, quality=95)

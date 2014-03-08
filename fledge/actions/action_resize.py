@@ -12,6 +12,8 @@ def action_resize(controller, parameters):
     resize 75h
     """
 
+    from PIL import Image
+
     # resize 640x480
     # resize 1000w
     # resize 500h

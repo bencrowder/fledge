@@ -10,6 +10,8 @@ def action_split(controller, parameters):
     split on /PART [IVXLCM]+/ to part-%%%.text starting with 5
     """
 
+    import re
+
     # For each file, load the contents, trim it, then save the file
     for file in controller.files:
         with open(file, 'r') as f:
@@ -19,7 +21,7 @@ def action_split(controller, parameters):
         with open(file, 'w') as f:
             f.write(contents)
 
-    # Parse the predicate
+    # Parse the parameters
     # TODO: make this elegant
     m = re.match("on /(.+?)(?!<\\\)/ to ((.+)( starting with (\d+))|(.+))", parameters) 
     pattern = m.groups()[0]

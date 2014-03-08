@@ -15,7 +15,7 @@ def action_move(controller, parameters):
 
     # move to [path]
 
-    # Get "to" out of predicate
+    # Get "to" out of parameters
     pred = parameters.split(' ')
     target = pred[1]
 

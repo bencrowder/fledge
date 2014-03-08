@@ -10,6 +10,8 @@ def action_flip(controller, parameters):
     flip v
     """
 
+    from PIL import Image
+
     # flip h
     # flip v
 

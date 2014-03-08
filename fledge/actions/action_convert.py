@@ -10,6 +10,9 @@ def action_convert(controller, parameters):
     convert to png
     """
 
+    from PIL import Image
+    import os
+
     # convert to png
     # convert to jpg
 

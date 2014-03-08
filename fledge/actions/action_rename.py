@@ -10,11 +10,14 @@ def action_rename(controller, parameters):
     rename part-%%%.text starting with 5
     """
 
+    import re
+    import os
+
     # rename .jpg
     # rename file-####.jpg
     # rename file-####.jpg starting with 5
 
-    # First parse the predicate
+    # First parse the parameters
     # TODO: allow spaces in filename
     pred = parameters.split(' ')
     target = pred[0]
@@ -52,4 +55,3 @@ def action_rename(controller, parameters):
         new_files.append(dest)
 
     controller.files = new_files
-

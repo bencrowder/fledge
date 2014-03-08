@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # trim
-def action_trim(self, controller, parameters):
+def action_trim(controller, parameters):
     """
   Trims any spaces from the edges of the file.
 

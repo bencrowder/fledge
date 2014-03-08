@@ -11,10 +11,10 @@ def action_append(controller, parameters):
     """
 
     # For each file, load the contents, append the text, then save the file
-    for file in self.files:
+    for file in controller.files:
         with open(file, 'r') as f:
             contents = f.read()
-            contents = contents + predicate.decode('string_escape')
+            contents = contents + parameters.decode('string_escape')
 
         with open(file, 'w') as f:
             f.write(contents)
